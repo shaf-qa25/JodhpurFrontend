@@ -9,12 +9,11 @@ export default function Login() {
 
   const handleLogin = (e) => {
     e.preventDefault();
-    // Yahan tu apna logic laga sakta hai (Sanyam ki API ya hardcoded)
     if (email === "admin@safety.com" && password === "admin123") {
-      localStorage.setItem("isAdmin", "true"); // Session save kiya
-      navigate("/admin"); // Controller Room mein entry!
+      localStorage.setItem("isAdmin", "true");
+      navigate("/admin"); 
     } else {
-      alert("Invalid Credentials, Bhai!");
+      alert("Invalid Credentials");
     }
   };
 
