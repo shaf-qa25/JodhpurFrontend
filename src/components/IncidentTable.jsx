@@ -226,14 +226,14 @@ export default function IncidentTable() {
   };
 
   return (
-    <div className="bg-white rounded-xl shadow-sm border border-slate-100 p-6 min-h-[500px] flex flex-col">
-      <div className="flex justify-between items-center mb-6">
-        <div className="flex items-center gap-2">
-           <div className="bg-red-50 p-2 rounded-lg">
+    <div className="bg-white rounded-xl shadow-sm border border-slate-100 !p-6 min-h-[500px] flex flex-col">
+      <div className="flex justify-between items-center !mb-6">
+        <div className="flex items-center !gap-2">
+           <div className="bg-red-50 !p-2 !rounded-lg">
               <ShieldAlert className="w-5 h-5 text-red-600" />
            </div>
            <h2 className="text-lg font-black text-slate-900 tracking-tight uppercase">
-             Live Mission Control
+             Live Reports
            </h2>
         </div>
       </div>
@@ -248,12 +248,12 @@ export default function IncidentTable() {
           <table className="w-full border-collapse">
             <thead>
               <tr className="border-b border-slate-100">
-                <th className="text-left py-4 px-4 font-black text-slate-400 uppercase text-[10px] tracking-widest">Type & ID</th>
-                <th className="text-left py-4 px-4 font-black text-slate-400 uppercase text-[10px] tracking-widest">Intelligence / Desc</th>
-                <th className="text-left py-4 px-4 font-black text-slate-400 uppercase text-[10px] tracking-widest">Impact</th>
-                <th className="text-left py-4 px-4 font-black text-slate-400 uppercase text-[10px] tracking-widest">Smart Location</th>
-                <th className="text-left py-4 px-4 font-black text-slate-400 uppercase text-[10px] tracking-widest">Status</th>
-                <th className="text-right py-4 px-4 font-black text-slate-400 uppercase text-[10px] tracking-widest">Action</th>
+                <th className="text-left !py-4 !px-4 font-black text-slate-400 uppercase !text-[10px] tracking-widest">Type & ID</th>
+                <th className="text-left !py-4 !px-4 font-black text-slate-400 uppercase !text-[10px] tracking-widest">Intelligence / Desc</th>
+                <th className="text-left !py-4 !px-4 font-black text-slate-400 uppercase !text-[10px] tracking-widest">Impact</th>
+                <th className="text-left !py-4 !px-4 font-black text-slate-400 uppercase text-[10px] tracking-widest">Smart Location</th>
+                <th className="text-left !py-4 !px-4 font-black text-slate-400 uppercase text-[10px] tracking-widest">Status</th>
+                <th className="text-right !py-4 !px-4 font-black text-slate-400 uppercase text-[10px] tracking-widest">Action</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-50">
@@ -270,7 +270,7 @@ export default function IncidentTable() {
                   >
                     <td className="py-4 px-4">
                       <div className="flex items-center gap-3">
-                        <div className={`p-2 rounded-lg ${incident.isVerified ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-500'}`}>
+                        <div className={`p-2! rounded-lg ${incident.isVerified ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-500'}`}>
                           <AlertCircle className="w-4 h-4" />
                         </div>
                         <div>
@@ -280,20 +280,20 @@ export default function IncidentTable() {
                       </div>
                     </td>
 
-                    <td className="py-4 px-4 max-w-[250px]">
+                    <td className="py-4! px-4! max-w-[250px]">
                        <p className="text-xs font-bold text-slate-700 truncate group-hover:whitespace-normal transition-all">
                          {highlightText(incident.desc, searchQuery)}
                        </p>
                     </td>
 
-                    <td className="py-4 px-4">
+                    <td className="py-4! px-4!">
                       <div className="flex items-center gap-1.5 text-slate-600">
                         <Users className="w-3.5 h-3.5" />
                         <span className="text-xs font-black">{incident.people || 0}</span>
                       </div>
                     </td>
 
-                    <td className="py-4 px-4">
+                    <td className="py-4! px-4!">
                       <div className="flex items-center gap-1.5 text-blue-600">
                         <MapPin className="w-3.5 h-3.5" />
                         <span className="text-[10px] font-black uppercase tracking-tighter">
@@ -302,8 +302,8 @@ export default function IncidentTable() {
                       </div>
                     </td>
 
-                    <td className="py-4 px-4">
-                      <span className={`px-2 py-0.5 rounded text-[10px] font-black border ${
+                    <td className="py-4! px-4!">
+                      <span className={`px-2! py-0.5! rounded! text-[10px]! font-black border ${
                         status === 'PENDING' ? 'text-red-600 bg-red-50 border-red-100' : 
                         status === 'DISPATCHED' ? 'text-amber-600 bg-amber-50 border-amber-100' :
                         'text-blue-600 bg-blue-50 border-blue-100'
@@ -312,10 +312,10 @@ export default function IncidentTable() {
                       </span>
                     </td>
 
-                    <td className="py-4 px-4 text-right">
+                    <td className="py-4! px-4! text-right">
                       <button
                         onClick={(e) => { e.stopPropagation(); setModalIncident(incident); }}
-                        className="bg-slate-900 text-white px-4 py-1.5 rounded-lg text-[9px] font-black hover:bg-blue-600 transition-all uppercase tracking-widest shadow-sm active:scale-95"
+                        className="bg-slate-900 text-white px-4! py-1.5! rounded-lg! text-[9px]! font-black hover:bg-blue-600 transition-all uppercase tracking-widest shadow-sm active:scale-95"
                       >
                         Deploy
                       </button>
@@ -326,8 +326,8 @@ export default function IncidentTable() {
             </tbody>
           </table>
         ) : (
-          <div className="flex flex-col items-center justify-center py-24">
-            <SearchX className="w-12 h-12 text-slate-200 mb-4" />
+          <div className="flex flex-col items-center justify-center py-24!">
+            <SearchX className="w-12 h-12 text-slate-200 mb-4!" />
             <p className="font-black text-slate-400 uppercase tracking-widest">Clear Skies - No Incidents</p>
           </div>
         )}

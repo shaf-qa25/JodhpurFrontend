@@ -67,39 +67,27 @@
 // export default App
 
 
-
 import React, { useState } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 
-// Providers (Sabko wrap karna hoga)
+// Providers
 import { ReportsProvider } from './context/ReportsContext';
 import { SOSProvider } from './context/SOSContext';
 import { IncidentProvider } from './context/IncidentContext';
 
-// Tera Admin Side ka Imports
+// Admin Side Imports
 import DashboardLayout from "./layouts/DashboardLayout";
 import Home from "./pages/Home";
-import Login from "./pages/Login"; 
 import 'leaflet/dist/leaflet.css';
 
-// Nikhil ka User Side ka Imports
+// User Side Imports
 import Header from './components/Header';
 import BottomNav from './components/BottomNav';
 import LandingPage from './pages/LandingPage';
 import HomePage from './pages/HomePage';
 import ReportsPage from './pages/ReportsPage';
 
-// Protected Route Logic
-const ProtectedRoute = ({ children }) => {
-  const isAdmin = localStorage.getItem("isAdmin") === "true";
-  if (!isAdmin) {
-    return <Navigate to="/login" replace />;
-  }
-  return children;
-};
-
 const App = () => {
-  // Nikhil ki states
   const [selectedService, setSelectedService] = useState(null);
   const [showModal, setShowModal] = useState(false);
   const [selectedIncidentType, setSelectedIncidentType] = useState('');
@@ -116,24 +104,27 @@ const App = () => {
           <Router>
             <Routes>
               {/* --- NIKHIL'S USER ROUTES --- */}
-              <Route path="/" element={<LandingPage />} />
+              {/* Har user route ko 'user-theme' class mein wrap kiya hai */}
+              <Route path="/" element={<div className="user-theme"><LandingPage /></div>} />
               
               <Route 
                 path="/home" 
                 element={
-                  <div className="min-h-screen bg-neutral-50">
-                    <Header onMenuClick={handleMenuClick} />
-                    <HomePage
-                      selectedService={selectedService}
-                      setSelectedService={setSelectedService}
-                      showModal={showModal}
-                      setShowModal={setShowModal}
-                      selectedIncidentType={selectedIncidentType}
-                      setSelectedIncidentType={setSelectedIncidentType}
-                      userLocation={userLocation}
-                      setUserLocation={setUserLocation}
-                    />
-                    <BottomNav />
+                  <div className="user-theme">
+                    <div className="min-h-screen bg-neutral-50">
+                      <Header onMenuClick={handleMenuClick} />
+                      <HomePage
+                        selectedService={selectedService}
+                        setSelectedService={setSelectedService}
+                        showModal={showModal}
+                        setShowModal={setShowModal}
+                        selectedIncidentType={selectedIncidentType}
+                        setSelectedIncidentType={setSelectedIncidentType}
+                        userLocation={userLocation}
+                        setUserLocation={setUserLocation}
+                      />
+                      <BottomNav />
+                    </div>
                   </div>
                 } 
               />
@@ -141,24 +132,19 @@ const App = () => {
               <Route 
                 path="/reports" 
                 element={
-                  <div className="min-h-screen bg-neutral-50">
-                    <Header onMenuClick={handleMenuClick} />
-                    <ReportsPage />
-                    <BottomNav />
+                  <div className="user-theme">
+                    <div className="min-h-screen bg-neutral-50">
+                      <Header onMenuClick={handleMenuClick} />
+                      <ReportsPage />
+                      <BottomNav />
+                    </div>
                   </div>
                 } 
               />
 
               {/* --- SHAFQA'S ADMIN ROUTES --- */}
-              <Route path="/login" element={<Login />} />
-              <Route 
-                path="/admin" 
-                element={
-                  <ProtectedRoute>
-                    <DashboardLayout />
-                  </ProtectedRoute>
-                }
-              >
+              {/* Ye dashboard tera original style hi rakhega */}
+              <Route path="/admin" element={<DashboardLayout />}>
                 <Route index element={<Home />} />
               </Route>
 

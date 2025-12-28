@@ -49,9 +49,9 @@ import { AlertTriangle } from 'lucide-react'
 const LandingPage = () => {
   const navigate = useNavigate()
 
-  // Ab ye button tere login page pe le jayega
+  // Ab ye button seedha Admin Dashboard par le jayega
   const handleAdminClick = () => {
-    navigate('/login') 
+    navigate('/admin') // Yahan pehle '/login' tha, ab '/admin' kar diya
   }
 
   const handleReportClick = () => {

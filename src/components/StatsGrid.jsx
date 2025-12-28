@@ -174,13 +174,13 @@ export default function StatsGrid() {
   ];
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 px-8 py-4">
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 !gap-6 !px-8 !py-4">
       {cards.map((card, index) => (
         <div 
           key={index} 
-          className={`bg-white p-6 rounded-3xl border border-slate-200 shadow-sm hover:shadow-md transition-all group relative overflow-hidden ${loading ? 'opacity-60' : ''}`}
+          className={`bg-white !p-6 rounded-3xl border border-slate-200 shadow-sm hover:shadow-md transition-all group relative overflow-hidden ${loading ? 'opacity-60' : ''}`}
         >
-          <div className="flex justify-between items-start mb-4 relative z-10">
+          <div className="flex justify-between items-start !mb-4 relative z-10">
             <div className={`p-3 rounded-2xl ${card.bg} ${card.color}`}>
               <card.icon className="w-6 h-6" />
             </div>
