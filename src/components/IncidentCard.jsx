@@ -93,9 +93,19 @@ const IncidentCard = ({ incident, onVerifyUpdate }) => {
               alt={incident.description}
               className="w-full h-full object-cover"
               onError={(e) => {
-                e.target.src = 'https://via.placeholder.com/400x300?text=No+Image+Available'
+                // Hide broken image and show placeholder div instead
+                e.target.style.display = 'none'
+                const placeholder = e.target.parentElement.querySelector('.image-placeholder')
+                if (placeholder) placeholder.style.display = 'flex'
               }}
             />
+            {/* Fallback placeholder for broken images */}
+            <div className="image-placeholder hidden w-full h-full items-center justify-center text-neutral-400 bg-neutral-100 absolute inset-0">
+              <div className="text-center">
+                <Camera className="w-12 h-12 mx-auto mb-2 opacity-50" />
+                <span className="text-sm">Image unavailable</span>
+              </div>
+            </div>
             
             {/* Navigation Arrows - Only show if more than one image */}
             {images.length > 1 && (

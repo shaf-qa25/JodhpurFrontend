@@ -23,6 +23,17 @@ export const getIncidents = async () => {
     // Backend returns array directly or wrapped in incidents property
     const incidents = Array.isArray(data) ? data : (data.incidents || [])
     
+    // Helper function to ensure full image URL
+    const getFullImageUrl = (mediaUrl) => {
+      if (!mediaUrl) return null
+      // If already a full URL (starts with http:// or https://), return as is
+      if (mediaUrl.startsWith('http://') || mediaUrl.startsWith('https://')) {
+        return mediaUrl
+      }
+      // If relative URL, prepend BASE_URL
+      return `${BASE_URL}${mediaUrl.startsWith('/') ? '' : '/'}${mediaUrl}`
+    }
+
     // Map backend format to frontend format
     return incidents.map(incident => ({
       id: incident._id || incident.id,
@@ -32,7 +43,7 @@ export const getIncidents = async () => {
       locationName: incident.locationName || '',
       latitude: incident.coordinates?.lat || incident.latitude,
       longitude: incident.coordinates?.lng || incident.longitude,
-      image: incident.mediaUrl || null,
+      image: getFullImageUrl(incident.mediaUrl),
       peopleAffected: incident.peopleAffected || 1,
       verificationCount: incident.confirmCount || 0,
       fakeCount: incident.fakeCount || 0,
