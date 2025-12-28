@@ -696,3 +696,53 @@ nav.desktop-only {
     pointer-events: auto;
   }
 }
+
+
+@import "tailwindcss";
+
+/* 1. Global Reset & Base Styles */
+@layer base {
+  * {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+  }
+
+  body {
+    @apply bg-gray-50 text-slate-900 antialiased;
+    font-family: "Inter", system-ui, sans-serif;
+  }
+}
+
+/* 2. Custom Theme Variables (v4 style) */
+@theme {
+  /* Custom Pulse Animation */
+  --animate-slow-pulse: pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  --animate-quick-pulse: pulse 1s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.4; }
+  }
+
+  /* Custom Transitions */
+  --transition-smooth: all 0.3s ease-in-out;
+}
+
+/* 3. Utility Classes (Optional) */
+@layer utilities {
+  .glass-effect {
+    @apply bg-white/80 backdrop-blur-md border border-white/20;
+  }
+}
+
+
+@keyframes marquee {
+  0% { transform: translateX(0%); }
+  100% { transform: translateX(-50%); }
+}
+
+.animate-marquee {
+  display: inline-block;
+  animation: marquee 40s linear infinite;
+} 
