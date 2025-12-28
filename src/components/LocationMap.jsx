@@ -25,6 +25,7 @@ const MapUpdater = ({ center, zoom }) => {
 }
 
 // Create custom icons for different place types with larger, more visible icons
+// iconType: 'hospital', 'police', or 'fire'
 const createCustomIcon = (color, iconType) => {
   // Much larger size for better visibility on map
   const iconSize = 50
@@ -44,7 +45,19 @@ const createCustomIcon = (color, iconType) => {
     </svg>
   `
   
-  const iconSvg = iconType === 'hospital' ? hospitalIconSvg : policeIconSvg
+  // Fire station icon SVG (flame)
+  const fireIconSvg = `
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512" fill="white" style="width: 28px; height: 28px;">
+      <path d="M216 23.86c0-23.8-30.65-32.77-44.15-13.04C48 191.85 224 200 224 288c0 35.63-29.11 64.46-64.85 63.99-35.17-.45-63.15-29.92-63.15-65.15v-85.51c0-21.7-26.47-32.23-41.43-16.5C27.8 213.16 0 261.33 0 320c0 105.1 86.13 192 192 192s192-86.9 192-192c0-170.29-168-193.04-168-296.14z"/>
+    </svg>
+  `
+  
+  let iconSvg = policeIconSvg
+  if (iconType === 'hospital') {
+    iconSvg = hospitalIconSvg
+  } else if (iconType === 'fire') {
+    iconSvg = fireIconSvg
+  }
   
   // Create icon HTML with larger size and better styling
   const iconHtml = `
@@ -135,21 +148,32 @@ const formatAddress = (data) => {
   return parts.join(', ')
 }
 
-// Overpass API query function
+// Overpass API query function - fetches all emergency services within 3km
 const fetchNearbyPlaces = async (latitude, longitude, radius = 3000) => {
   const overpassUrl = 'https://overpass-api.de/api/interpreter'
   
-  // Query for hospitals and police stations within radius
+  // Query for all emergency services within 3km radius:
+  // - Hospitals, clinics, doctors (medical)
+  // - Police stations
+  // - Fire stations
+  // - Ambulance stations / emergency services
   const query = `
     [out:json][timeout:25];
     (
       node["amenity"="hospital"](around:${radius},${latitude},${longitude});
       node["amenity"="clinic"](around:${radius},${latitude},${longitude});
       node["amenity"="doctors"](around:${radius},${latitude},${longitude});
+      node["amenity"="pharmacy"](around:${radius},${latitude},${longitude});
       way["amenity"="hospital"](around:${radius},${latitude},${longitude});
       way["amenity"="clinic"](around:${radius},${latitude},${longitude});
       node["amenity"="police"](around:${radius},${latitude},${longitude});
       way["amenity"="police"](around:${radius},${latitude},${longitude});
+      node["amenity"="fire_station"](around:${radius},${latitude},${longitude});
+      way["amenity"="fire_station"](around:${radius},${latitude},${longitude});
+      node["emergency"="ambulance_station"](around:${radius},${latitude},${longitude});
+      way["emergency"="ambulance_station"](around:${radius},${latitude},${longitude});
+      node["emergency"="fire_station"](around:${radius},${latitude},${longitude});
+      way["emergency"="fire_station"](around:${radius},${latitude},${longitude});
     );
     out center;
   `
@@ -191,16 +215,20 @@ const LocationMap = ({ latitude, longitude, showNearbyPlaces = false, isSOSMode 
   const defaultZoom = 13
 
   useEffect(() => {
-    // If props are provided, use them
+    // If props are provided, use them and maintain them (don't re-fetch)
     if (latitude && longitude) {
-      setUserLocation([latitude, longitude])
-      setIsLoading(false)
-      setLocationError(null)
+      const newLocation = [latitude, longitude]
+      // Only update if location actually changed to prevent unnecessary re-renders
+      if (!userLocation || userLocation[0] !== newLocation[0] || userLocation[1] !== newLocation[1]) {
+        setUserLocation(newLocation)
+        setIsLoading(false)
+        setLocationError(null)
+      }
       return
     }
 
-    // Otherwise, try to get current location automatically
-    if (navigator.geolocation) {
+    // Only try to get location automatically if props are not provided AND we don't have a location yet
+    if (!userLocation && navigator.geolocation) {
       setIsLoading(true)
       navigator.geolocation.getCurrentPosition(
         (position) => {
@@ -237,7 +265,7 @@ const LocationMap = ({ latitude, longitude, showNearbyPlaces = false, isSOSMode 
           maximumAge: 0
         }
       )
-    } else {
+    } else if (!userLocation) {
       setIsLoading(false)
       setLocationError('Geolocation is not supported by your browser.')
       setUserLocation(defaultLocation)
@@ -301,10 +329,12 @@ const LocationMap = ({ latitude, longitude, showNearbyPlaces = false, isSOSMode 
                 let placeType = 'other'
                 let name = tags.name || tags['name:en'] || 'Unnamed Place'
                 
-                if (tags.amenity === 'hospital' || tags.amenity === 'clinic' || tags.amenity === 'doctors') {
+                if (tags.amenity === 'hospital' || tags.amenity === 'clinic' || tags.amenity === 'doctors' || tags.amenity === 'pharmacy' || tags.emergency === 'ambulance_station') {
                   placeType = 'hospital'
                 } else if (tags.amenity === 'police') {
                   placeType = 'police'
+                } else if (tags.amenity === 'fire_station' || tags.emergency === 'fire_station') {
+                  placeType = 'fire'
                 }
                 
                 return {
@@ -316,7 +346,7 @@ const LocationMap = ({ latitude, longitude, showNearbyPlaces = false, isSOSMode 
                   tags
                 }
               })
-              .filter(place => place !== null && (place.type === 'hospital' || place.type === 'police'))
+              .filter(place => place !== null && (place.type === 'hospital' || place.type === 'police' || place.type === 'fire'))
             
             setNearbyPlaces(processedPlaces)
             setIsLoadingPlaces(false)
@@ -345,9 +375,10 @@ const LocationMap = ({ latitude, longitude, showNearbyPlaces = false, isSOSMode 
     shadowSize: [41, 41]
   })
 
-  // Create icons for hospitals and police stations
-  const hospitalIcon = createCustomIcon('#ef4444', 'hospital') // Red for hospitals
+  // Create icons for emergency services
+  const hospitalIcon = createCustomIcon('#ef4444', 'hospital') // Red for hospitals/medical
   const policeIcon = createCustomIcon('#3b82f6', 'police') // Blue for police
+  const fireIcon = createCustomIcon('#f97316', 'fire') // Orange for fire stations
 
   if (isLoading) {
     return (
@@ -428,11 +459,11 @@ const LocationMap = ({ latitude, longitude, showNearbyPlaces = false, isSOSMode 
           <p className={`text-sm font-semibold ${isSOSMode ? 'text-red-900' : 'text-green-800'}`}>
             {isSOSMode ? (
               <>
-                🚨 <strong>Emergency Services Located:</strong> {nearbyPlaces.filter(p => p.type === 'police').length} police stations, {nearbyPlaces.filter(p => p.type === 'hospital').length} hospitals nearby
+                🚨 <strong>Emergency Services Within 3km:</strong> {nearbyPlaces.filter(p => p.type === 'police').length} police, {nearbyPlaces.filter(p => p.type === 'hospital').length} medical, {nearbyPlaces.filter(p => p.type === 'fire').length} fire stations
               </>
             ) : (
               <>
-                Found {nearbyPlaces.length} nearby {nearbyPlaces.length === 1 ? 'place' : 'places'}
+                Found {nearbyPlaces.length} nearby {nearbyPlaces.length === 1 ? 'place' : 'places'} within 3km
               </>
             )}
           </p>
@@ -475,31 +506,47 @@ const LocationMap = ({ latitude, longitude, showNearbyPlaces = false, isSOSMode 
           </Marker>
 
           {/* Nearby Places Markers - Highlighted in SOS mode */}
-          {nearbyPlaces.map((place) => (
-            <Marker
-              key={place.id}
-              position={[place.latitude, place.longitude]}
-              icon={place.type === 'hospital' ? hospitalIcon : policeIcon}
-            >
-              <Popup>
-                <div className="text-center">
-                  <strong className="text-base">{place.name}</strong>
-                  <br />
-                  <span className="text-xs text-neutral-600 capitalize">
-                    {place.type === 'hospital' ? '🏥 Hospital' : '🚓 Police Station'}
-                  </span>
-                  {isSOSMode && (
-                    <>
-                      <br />
-                      <span className="text-xs font-bold text-red-600 mt-1 block">
-                        🚨 Emergency Service
-                      </span>
-                    </>
-                  )}
-                </div>
-              </Popup>
-            </Marker>
-          ))}
+          {nearbyPlaces.map((place) => {
+            let icon = hospitalIcon
+            let serviceLabel = '🏥 Medical'
+            
+            if (place.type === 'police') {
+              icon = policeIcon
+              serviceLabel = '🚓 Police Station'
+            } else if (place.type === 'fire') {
+              icon = fireIcon
+              serviceLabel = '🚒 Fire Station'
+            } else if (place.type === 'hospital') {
+              icon = hospitalIcon
+              serviceLabel = '🏥 Medical Facility'
+            }
+            
+            return (
+              <Marker
+                key={place.id}
+                position={[place.latitude, place.longitude]}
+                icon={icon}
+              >
+                <Popup>
+                  <div className="text-center">
+                    <strong className="text-base">{place.name}</strong>
+                    <br />
+                    <span className="text-xs text-neutral-600 capitalize">
+                      {serviceLabel}
+                    </span>
+                    {isSOSMode && (
+                      <>
+                        <br />
+                        <span className="text-xs font-bold text-red-600 mt-1 block">
+                          🚨 Emergency Service (Within 3km)
+                        </span>
+                      </>
+                    )}
+                  </div>
+                </Popup>
+              </Marker>
+            )
+          })}
 
           <MapUpdater center={userLocation} zoom={defaultZoom} />
         </MapContainer>
@@ -542,8 +589,7 @@ const LocationMap = ({ latitude, longitude, showNearbyPlaces = false, isSOSMode 
           </p>
           {nearbyPlaces.length > 0 && (
             <p className="text-xs text-neutral-600 mt-1">
-              {nearbyPlaces.filter(p => p.type === 'hospital').length} hospitals,{' '}
-              {nearbyPlaces.filter(p => p.type === 'police').length} police stations nearby
+              <strong>Emergency Services (3km radius):</strong> {nearbyPlaces.filter(p => p.type === 'hospital').length} medical, {nearbyPlaces.filter(p => p.type === 'police').length} police, {nearbyPlaces.filter(p => p.type === 'fire').length} fire stations
             </p>
           )}
         </div>
