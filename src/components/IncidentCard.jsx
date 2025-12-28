@@ -10,8 +10,10 @@ const IncidentCard = ({ incident, onVerifyUpdate }) => {
   const [currentImageIndex, setCurrentImageIndex] = useState(0)
 
   // Handle multiple images - convert single image to array
-  const images = incident.image 
-    ? (Array.isArray(incident.image) ? incident.image : [incident.image])
+  // Support both frontend format (image) and backend format (mediaUrl)
+  const imageUrl = incident.image || incident.mediaUrl
+  const images = imageUrl 
+    ? (Array.isArray(imageUrl) ? imageUrl : [imageUrl])
     : []
 
   const handleVerify = async () => {
@@ -67,23 +69,23 @@ const IncidentCard = ({ incident, onVerifyUpdate }) => {
   const displayCount = localVerificationCount
 
   return (
-    <div className="bg-white border-2 border-red-200 rounded-2xl shadow-lg overflow-hidden hover:shadow-xl transition-all">
+    <div className="bg-white   shadow-md overflow-hidden transition-all">
       {/* Alert Header */}
-      <div className="bg-gradient-to-r from-red-600 to-red-700 text-white px-6 py-4 flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <AlertCircle className="w-6 h-6" />
-          <span className="font-bold text-lg">INCIDENT ALERT</span>
+      <div className=" text-gray-800 px-4 py-3 flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <AlertCircle className="w-5 h-5" />
+          <span className="font-bold text-sm">INCIDENT ALERT</span>
         </div>
         {displayCount > 0 && (
-          <div className="bg-white/20 px-3 py-1 rounded-lg flex items-center gap-2">
-            <CheckCircle className="w-4 h-4" />
-            <span className="text-sm font-semibold">{displayCount}</span>
+          <div className="bg-white/20 px-2 py-1 rounded-lg flex items-center gap-1">
+            <CheckCircle className="w-3 h-3" />
+            <span className="text-xs font-semibold">{displayCount}</span>
           </div>
         )}
       </div>
 
       {/* Media Section with Slider */}
-      <div className="relative h-64 bg-neutral-100 overflow-hidden">
+      <div className="relative h-48 bg-neutral-100 overflow-hidden">
         {images.length > 0 ? (
           <>
             <img
@@ -142,76 +144,76 @@ const IncidentCard = ({ incident, onVerifyUpdate }) => {
       </div>
 
       {/* Card Content */}
-      <div className="p-6">
+      <div className="p-4">
         {/* Incident Type */}
-        <div className="mb-4">
-          <h3 className="text-2xl font-bold text-neutral-900 mb-2">
+        <div className="mb-3">
+          <h3 className="text-lg font-bold text-neutral-900 mb-1">
             {incident.type || 'Incident'}
           </h3>
-          <p className="text-base text-neutral-700 line-clamp-2">
+          <p className="text-sm text-neutral-700 line-clamp-2">
             {incident.description || 'No description provided'}
           </p>
         </div>
 
         {/* Location */}
-        <div className="flex items-center gap-2 text-neutral-700 mb-4">
-          <MapPin className="w-5 h-5 text-red-600 flex-shrink-0" />
-          <span className="text-base font-semibold">
+        <div className="flex items-center gap-2 text-neutral-700 mb-3">
+          <MapPin className="w-4 h-4 text-red-600 flex-shrink-0" />
+          <span className="text-sm font-semibold">
             {incident.locationName || incident.location || 'Location not specified'}
           </span>
         </div>
 
         {/* Time and Priority */}
-        <div className="flex items-center justify-between mb-6 pb-4 border-b border-neutral-200">
+        <div className="flex items-center justify-between mb-4 pb-3 border-b border-neutral-200">
           <div className="flex items-center gap-2 text-neutral-600">
-            <Clock className="w-4 h-4" />
-            <span className="text-sm font-semibold">{timeAgo}</span>
+            <Clock className="w-3 h-3" />
+            <span className="text-xs font-semibold">{timeAgo}</span>
           </div>
-          <span className={`px-3 py-1 rounded-full text-xs font-bold ${priority.color}`}>
+          <span className={`px-2 py-1 rounded-full text-xs font-bold ${priority.color}`}>
             {priority.label}
           </span>
         </div>
 
         {/* Action Buttons */}
-        <div className="flex gap-3 mb-4">
+        <div className="flex gap-2 mb-3">
           <button
-            className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg transition-colors"
+            className="flex-1 flex items-center justify-center gap-1 px-3 py-2 bg-blue-400 hover:bg-blue-500 text-white font-semibold m-4 transition-colors text-xs"
           >
-            <ExternalLink className="w-4 h-4" />
+            <ExternalLink className="w-3 h-3" />
             <span>View on Map</span>
           </button>
           <button
-            className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-neutral-200 hover:bg-neutral-300 text-neutral-700 font-semibold rounded-lg transition-colors"
+            className="flex-1 flex items-center justify-center gap-1 px-3 py-2 bg-neutral-200 hover:bg-neutral-300 text-neutral-700 font-semibold  transition-colors text-xs"
           >
-            <Info className="w-4 h-4" />
+            <Info className="w-3 h-3" />
             <span>Details</span>
           </button>
         </div>
 
         {/* Verify and Report Fake Buttons */}
-        <div className="flex gap-3">
+        <div className="flex gap-2">
           <button
             onClick={handleVerify}
             disabled={isVerifying || isReportedFake || hasUserVerified}
-            className={`flex-1 py-3 px-4 rounded-lg font-bold text-sm transition-all flex items-center justify-center gap-2 ${
+            className={`flex-1 py-2 px-3  font-bold text-xs transition-all flex items-center justify-center gap-1 ${
               isVerifying || isReportedFake || hasUserVerified
                 ? 'bg-neutral-200 text-neutral-500 cursor-not-allowed'
-                : 'bg-green-600 hover:bg-green-700 text-white shadow-md hover:shadow-lg transform hover:scale-[1.02] active:scale-[0.98]'
+                : 'bg-green-600 hover:bg-green-700 text-white shadow-sm hover:shadow-md'
             }`}
           >
             {isVerifying ? (
               <>
-                <Loader2 className="w-4 h-4 animate-spin" />
+                <Loader2 className="w-3 h-3 animate-spin" />
                 <span>Verifying...</span>
               </>
             ) : hasUserVerified ? (
               <>
-                <Check className="w-4 h-4" />
+                <Check className="w-3 h-3" />
                 <span>Verified ({displayCount})</span>
               </>
             ) : (
               <>
-                <CheckCircle className="w-4 h-4" />
+                <CheckCircle className="w-3 h-3" />
                 <span>Verify ({displayCount})</span>
               </>
             )}
@@ -220,20 +222,20 @@ const IncidentCard = ({ incident, onVerifyUpdate }) => {
           <button
             onClick={handleReportFake}
             disabled={isVerifying || isReportedFake || hasUserVerified}
-            className={`flex-1 py-3 px-4 rounded-lg font-bold text-sm transition-all flex items-center justify-center gap-2 ${
+            className={`flex-1 py-2 px-3 rounded-lg font-bold text-xs transition-all flex items-center justify-center gap-1 ${
               isVerifying || isReportedFake || hasUserVerified
                 ? 'bg-neutral-200 text-neutral-500 cursor-not-allowed'
-                : 'bg-red-600 hover:bg-red-700 text-white shadow-md hover:shadow-lg transform hover:scale-[1.02] active:scale-[0.98]'
+                : 'bg-red-500 hover:bg-red-300 text-white shadow-sm hover:shadow-md'
             }`}
           >
             {isReportedFake ? (
               <>
-                <Check className="w-4 h-4" />
+                <Check className="w-3 h-3" />
                 <span>Reported</span>
               </>
             ) : (
               <>
-                <X className="w-4 h-4" />
+                <X className="w-3 h-3" />
                 <span>Fake News</span>
               </>
             )}

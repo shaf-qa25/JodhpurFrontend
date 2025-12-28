@@ -1,64 +1,57 @@
 import React from 'react'
-import { ThumbsUp, User } from 'lucide-react'
+import { ThumbsUp } from 'lucide-react'
+import { getTimeAgo } from '../utils/timeAgo'
 
-const CommunityFeed = () => {
-  const feedItems = [
-    {
-      id: 1,
-      image: 'https://via.placeholder.com/300x200?text=Waterlogging',
-      title: 'Waterlogging on Street 5',
-      upvotes: 20,
-      author: 'User123'
-    },
-    {
-      id: 2,
-      image: 'https://via.placeholder.com/300x200?text=Streetlight',
-      title: 'Streetlight',
-      upvotes: 15,
-      author: 'User456'
-    },
-    {
-      id: 3,
-      image: 'https://via.placeholder.com/300x200?text=Road+Damage',
-      title: 'Road Damage on Main Street',
-      upvotes: 8,
-      author: 'User789'
-    }
-  ]
+const CommunityFeed = ({ reports = [], isDesktop = false }) => {
+  // Use reports from context or fallback to sample data
+  const feedItems = reports.length > 0 
+    ? reports.slice(0, 5).map(report => ({
+        id: report.id,
+        image: report.image || 'https://via.placeholder.com/300x200?text=No+Image',
+        title: report.description || report.type || 'Incident Report',
+        upvotes: report.verificationCount || 0,
+        timeAgo: getTimeAgo(report.createdAt)
+      }))
+    : [
+        {
+          id: 1,
+          image: 'https://via.placeholder.com/300x200?text=Waterlogging',
+          title: 'Waterlooging in Sector 5',
+          upvotes: 24,
+          timeAgo: '5 min ago'
+        },
+        {
+          id: 2,
+          image: 'https://via.placeholder.com/300x200?text=Streetlight',
+          title: 'Streetlight out near Park',
+          upvotes: 18,
+          timeAgo: '5 hour ago'
+        }
+      ]
 
   return (
-    <div className="bg-white border border-neutral-200 rounded-2xl shadow-sm p-6">
-      <h2 className="text-lg font-bold text-neutral-900 mb-4">Community Feed</h2>
+    <div className={isDesktop ? "" : "feed-section"}>
+      <h3 className={isDesktop ? "text-xl font-bold mb-4" : "section-heading"}>Remmunity Feed</h3>
       
-      <div className="grid grid-cols-2 gap-4">
+      <div>
         {feedItems.map((item) => (
-          <div key={item.id} className="bg-neutral-50 rounded-lg overflow-hidden hover:shadow-md transition-shadow">
-            <div className="relative h-32 bg-neutral-200">
-              <img
-                src={item.image}
-                alt={item.title}
-                className="w-full h-full object-cover"
-                onError={(e) => {
-                  e.target.src = 'https://via.placeholder.com/300x200?text=No+Image'
-                }}
-              />
+          <div key={item.id} className={isDesktop ? "feed-item" : "feed-card"}>
+            <img
+              src={item.image}
+              alt={item.title}
+              className={isDesktop ? "avatar" : "feed-img"}
+              onError={(e) => {
+                e.target.src = 'https://via.placeholder.com/60x60?text=No+Image'
+              }}
+            />
+            <div className="feed-content">
+              <p>{item.title}</p>
+              <span>{item.timeAgo || 'Recently'}</span>
             </div>
-            <div className="p-3">
-              <h3 className="text-sm font-semibold text-neutral-900 mb-2 line-clamp-2">
-                {item.title}
-              </h3>
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-1">
-                  <ThumbsUp className="w-4 h-4 text-blue-600" />
-                  <span className="text-xs font-semibold text-neutral-700">
-                    Upvotes: {item.upvotes}
-                  </span>
-                </div>
-                <div className="flex items-center gap-1">
-                  <User className="w-3 h-3 text-neutral-500" />
-                </div>
-              </div>
-            </div>
+            <button className={isDesktop ? "upvote-tag" : "upvote-btn"}>
+              <ThumbsUp className="w-3 h-3" />
+              <span>{item.upvotes}</span>
+            </button>
           </div>
         ))}
       </div>

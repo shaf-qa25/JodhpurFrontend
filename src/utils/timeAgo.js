@@ -34,3 +34,4 @@ export const getTimeAgo = (timestamp) => {
   return `${diffInMonths} ${diffInMonths === 1 ? 'month' : 'months'} ago`
 }
 
+

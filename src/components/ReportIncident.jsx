@@ -1,9 +1,10 @@
 import React, { useState, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { MapPin, Upload, Send, Users } from 'lucide-react'
+import { MapPin, Upload, Send, Users, Loader2 } from 'lucide-react'
 import { useReports } from '../context/ReportsContext'
+import { createIncident } from '../services/api'
 
-const ReportIncident = ({ selectedIncidentType, onLocationUpdate }) => {
+const ReportIncident = ({ selectedIncidentType, onLocationUpdate, onIncidentTypeSelect, isDesktop = false }) => {
   const [incidentType, setIncidentType] = useState('')
   const [description, setDescription] = useState('')
   const [peopleAffected, setPeopleAffected] = useState('')
@@ -11,8 +12,10 @@ const ReportIncident = ({ selectedIncidentType, onLocationUpdate }) => {
   const [locationName, setLocationName] = useState('')
   const [locationCoords, setLocationCoords] = useState(null)
   const [uploadedFile, setUploadedFile] = useState(null)
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [error, setError] = useState(null)
   const fileInputRef = useRef(null)
-  const { addReport } = useReports()
+  const { addReport, refreshReports } = useReports()
   const navigate = useNavigate()
 
   // Reverse geocoding function
@@ -60,17 +63,15 @@ const ReportIncident = ({ selectedIncidentType, onLocationUpdate }) => {
   }, [selectedIncidentType])
 
   const incidentTypes = [
-    'Police',
-    'Ambulance',
-    'Fire',
-    'Pelos',
-    'Accident',
-    'Medical Emergency',
-    'Crime',
-    'Natural Disaster',
-    'Traffic Issue',
-    'Utility Problem',
-    'Other'
+    'police',
+    'fire',
+    'accident',
+    'medical',
+    'crime',
+    'traffic',
+    'utility',
+    'disaster',
+    'other'
   ]
 
   const handleGetLocation = async () => {
@@ -81,13 +82,15 @@ const ReportIncident = ({ selectedIncidentType, onLocationUpdate }) => {
           setLocation(`${latitude}, ${longitude}`)
           setLocationCoords({ latitude, longitude })
           
-          // Fetch location name using reverse geocoding
-          setTimeout(async () => {
-            const name = await reverseGeocode(latitude, longitude)
-            if (name) {
-              setLocationName(name)
-            }
-          }, 1000) // Delay to respect rate limiting
+          // Fetch location name using reverse geocoding (only if not already set)
+          if (!locationName) {
+            setTimeout(async () => {
+              const name = await reverseGeocode(latitude, longitude)
+              if (name) {
+                setLocationName(name)
+              }
+            }, 2000) // Increased delay to reduce requests
+          }
           
           // Pass location to parent component for map display
           if (onLocationUpdate) {
@@ -106,142 +109,179 @@ const ReportIncident = ({ selectedIncidentType, onLocationUpdate }) => {
   const handleFileUpload = (e) => {
     const file = e.target.files[0]
     if (file) {
-      setUploadedFile(file)
-      // Create a preview URL for the image
+      // Store file object and create preview for display
       if (file.type.startsWith('image/')) {
         const reader = new FileReader()
         reader.onloadend = () => {
+          // Store both file object (for API) and preview (for display)
           setUploadedFile({ file, preview: reader.result })
         }
         reader.readAsDataURL(file)
       } else {
-        setUploadedFile({ file })
+        // For non-image files, just store the file object
+        setUploadedFile({ file, preview: null })
       }
     }
   }
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault()
+    setError(null)
+
     if (!incidentType || !description) {
-      alert('Please fill in all required fields')
+      setError('Please fill in all required fields')
       return
     }
 
-    // Create report object
-    const reportData = {
-      type: incidentType,
-      description: description, // Store description without type prefix
-      location: location || 'Location not specified',
-      locationName: locationName || location || 'Location not specified',
-      latitude: locationCoords?.latitude,
-      longitude: locationCoords?.longitude,
-      image: uploadedFile?.preview || null,
-      peopleAffected: parseInt(peopleAffected) || 1
+    setIsSubmitting(true)
+
+    try {
+      // Get the actual file object (not the preview/base64)
+      const fileObject = uploadedFile?.file || (uploadedFile instanceof File ? uploadedFile : null)
+      
+      // Create report object with file object for FormData
+      const reportData = {
+        type: incidentType,
+        description: description,
+        location: location || 'Location not specified',
+        locationName: locationName || location || 'Location not specified',
+        latitude: locationCoords?.latitude,
+        longitude: locationCoords?.longitude,
+        file: fileObject, // Pass the actual file object
+        peopleAffected: parseInt(peopleAffected) || 1
+      }
+
+      // Submit to backend API
+      const response = await createIncident(reportData)
+      
+      // Backend response format: array with incident object or single object
+      const incidentResponse = Array.isArray(response) ? response[0] : (response.incident || response)
+      
+      // Map backend response to frontend format for context
+      const reportToAdd = {
+        id: incidentResponse._id || incidentResponse.id || Date.now(),
+        type: (incidentResponse.type || '').toLowerCase(),
+        description: incidentResponse.description,
+        location: locationName || location || 'Location not specified',
+        locationName: locationName || location || 'Location not specified',
+        latitude: incidentResponse.coordinates?.lat || locationCoords?.latitude,
+        longitude: incidentResponse.coordinates?.lng || locationCoords?.longitude,
+        image: incidentResponse.mediaUrl || uploadedFile?.preview || null,
+        peopleAffected: incidentResponse.peopleAffected || parseInt(peopleAffected) || 1,
+        verificationCount: incidentResponse.confirmCount || 0,
+        createdAt: incidentResponse.createdAt || new Date().toISOString(),
+        status: incidentResponse.status || 'PENDING'
+      }
+      
+      addReport(reportToAdd)
+      
+      // Show success message
+      alert('Incident report submitted successfully!')
+      
+      // Refresh reports from backend after navigation (only if on reports page)
+      // This prevents duplicate requests
+      if (refreshReports && window.location.pathname === '/reports') {
+        setTimeout(() => {
+          refreshReports()
+        }, 1500)
+      }
+
+      // Reset form
+      setIncidentType('')
+      setDescription('')
+      setPeopleAffected('')
+      setLocation('')
+      setLocationName('')
+      setLocationCoords(null)
+      setUploadedFile(null)
+      if (fileInputRef.current) {
+        fileInputRef.current.value = ''
+      }
+
+      // Navigate to reports page to see the new report
+      navigate('/reports')
+    } catch (error) {
+      console.error('Error submitting incident:', error)
+      setError(error.message || 'Failed to submit incident report. Please try again.')
+      alert(`Error: ${error.message || 'Failed to submit incident report. Please try again.'}`)
+    } finally {
+      setIsSubmitting(false)
     }
-
-    // Add report to context
-    addReport(reportData)
-
-    // Show success message
-    alert('Incident report submitted successfully!')
-
-    // Reset form
-    setIncidentType('')
-    setDescription('')
-    setPeopleAffected('')
-    setLocation('')
-    setLocationName('')
-    setLocationCoords(null)
-    setUploadedFile(null)
-    if (fileInputRef.current) {
-      fileInputRef.current.value = ''
-    }
-
-    // Navigate to reports page to see the new report
-    navigate('/reports')
   }
 
   return (
-    <div className="bg-white border border-neutral-200 rounded-2xl shadow-sm p-10 lg:p-12">
-      <h2 className="text-xl lg:text-2xl font-bold text-neutral-900 mb-10">Report Incident</h2>
+    <div>
+      <h3 className={isDesktop ? "text-xl font-bold mb-4" : "section-heading"}>Report Incident</h3>
       
-      <form onSubmit={handleSubmit} className="space-y-8">
-        {/* Incident Type */}
-        <div>
-          <label className="block text-base font-semibold text-neutral-700 mb-3">
-            Incident Type
-          </label>
-          <select
-            value={incidentType}
-            onChange={(e) => setIncidentType(e.target.value)}
-            className="w-full px-5 py-4 text-base border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 font-semibold text-neutral-900 bg-white"
-          >
-            <option value="">Select incident type</option>
-            {incidentTypes.map((type) => (
-              <option key={type} value={type}>
-                {type}
-              </option>
-            ))}
-          </select>
+      {error && (
+        <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg">
+          <p className="text-red-800 text-sm font-semibold">{error}</p>
         </div>
+      )}
+      
+      <form onSubmit={handleSubmit} className={isDesktop ? "space-y-4" : "space-y-4"}>
+        {/* Incident Type */}
+        <select
+          value={incidentType}
+          onChange={(e) => {
+            setIncidentType(e.target.value)
+            if (onIncidentTypeSelect) {
+              onIncidentTypeSelect(e.target.value)
+            }
+          }}
+          className={isDesktop ? "desktop-input" : "input-field"}
+        >
+          <option value="">Incident Type Accident, Medical, Fire</option>
+          {incidentTypes.map((type) => (
+            <option key={type} value={type}>
+              {type.charAt(0).toUpperCase() + type.slice(1)}
+            </option>
+          ))}
+        </select>
 
         {/* Description */}
-        <div>
-          <label className="block text-base font-semibold text-neutral-700 mb-3">
-            Description
-          </label>
-          <textarea
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            rows="6"
-            className="w-full px-5 py-4 text-base border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 font-semibold text-neutral-900 resize-none"
-            placeholder="Describe the incident in detail..."
+        <textarea
+          value={description}
+          onChange={(e) => setDescription(e.target.value)}
+          rows={isDesktop ? "6" : "4"}
+          className={isDesktop ? "desktop-textarea" : "input-field resize-none"}
+          placeholder="Description"
+        />
+
+        {/* Number of People Affected */}
+        <div className="relative">
+          <div className="absolute left-3 top-1/2 transform -translate-y-1/2">
+            <Users className="w-4 h-4 text-neutral-400" />
+          </div>
+          <input
+            type="number"
+            value={peopleAffected}
+            onChange={(e) => {
+              const value = e.target.value
+              if (value === '' || (parseInt(value) > 0 && parseInt(value) <= 10000)) {
+                setPeopleAffected(value)
+              }
+            }}
+            min="1"
+            max="10000"
+            className={isDesktop ? "desktop-input pl-10" : "input-field pl-10"}
+            placeholder="People Affected"
           />
         </div>
 
-        {/* Number of People Affected */}
-        <div>
-          <label className="block text-base font-semibold text-neutral-700 mb-3">
-            Number of People Affected
-          </label>
-          <div className="relative">
-            <div className="absolute left-5 top-1/2 transform -translate-y-1/2">
-              <Users className="w-5 h-5 text-neutral-400" />
-            </div>
-            <input
-              type="number"
-              value={peopleAffected}
-              onChange={(e) => {
-                const value = e.target.value
-                // Only allow positive numbers
-                if (value === '' || (parseInt(value) > 0 && parseInt(value) <= 10000)) {
-                  setPeopleAffected(value)
-                }
-              }}
-              min="1"
-              max="10000"
-              className="w-full pl-14 pr-5 py-4 text-base border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 font-semibold text-neutral-900 bg-white"
-              placeholder="Enter number of people affected"
-            />
-          </div>
-          <p className="text-xs text-neutral-500 mt-2">
-            Enter the approximate number of people affected by this incident
-          </p>
-        </div>
-
         {/* Location and Upload */}
-        <div className="flex gap-4">
+        <div className={isDesktop ? "flex gap-3 flex-wrap" : "upload-row"}>
           <button
             type="button"
             onClick={handleGetLocation}
-            className="flex-1 flex items-center justify-center gap-3 px-5 py-4 text-base border border-neutral-300 rounded-lg hover:bg-neutral-50 transition-colors font-semibold text-neutral-900"
+            className={isDesktop ? "flex-1 flex items-center justify-center gap-2 px-4 py-3 border border-neutral-300 rounded-lg hover:bg-neutral-50 transition-colors min-w-[150px]" : "loc-btn"}
           >
-            <MapPin className="w-6 h-6 text-blue-600" />
+            <MapPin className="w-4 h-4 text-blue-600" />
             <span>Get Current Location</span>
           </button>
           
-          <label className="flex-1 flex items-center justify-center gap-3 px-5 py-4 text-base border border-neutral-300 rounded-lg hover:bg-neutral-50 transition-colors cursor-pointer font-semibold text-neutral-900">
-            <Upload className="w-6 h-6 text-blue-600" />
+          <label className={isDesktop ? "flex-1 flex items-center justify-center gap-2 px-4 py-3 border border-neutral-300 rounded-lg hover:bg-neutral-50 transition-colors cursor-pointer min-w-[150px]" : "photo-btn"}>
+            <Upload className="w-4 h-4 text-blue-600" />
             <span>Upload Photo/Video</span>
             <input
               ref={fileInputRef}
@@ -256,10 +296,20 @@ const ReportIncident = ({ selectedIncidentType, onLocationUpdate }) => {
         {/* Submit Button */}
         <button
           type="submit"
-          className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 px-6 text-lg rounded-lg shadow-sm transition-colors flex items-center justify-center gap-3"
+          disabled={isSubmitting}
+          className={isDesktop ? "btn-submit" : "submit-btn"}
         >
-          <Send className="w-6 h-6" />
-          <span>Submit Report</span>
+          {isSubmitting ? (
+            <>
+              <Loader2 className="w-5 h-5 animate-spin" />
+              <span>Submitting...</span>
+            </>
+          ) : (
+            <>
+              <Send className="w-5 h-5" />
+              <span>Submit Report</span>
+            </>
+          )}
         </button>
       </form>
     </div>

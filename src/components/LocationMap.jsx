@@ -244,13 +244,14 @@ const LocationMap = ({ latitude, longitude, showNearbyPlaces = false, isSOSMode 
     }
   }, [latitude, longitude])
 
-  // Fetch location name when userLocation changes
+  // Fetch location name when userLocation changes (with debouncing)
   useEffect(() => {
     if (userLocation && userLocation[0] && userLocation[1]) {
       setIsLoadingLocationName(true)
       setLocationNameError(null)
       
       // Add delay to respect Nominatim rate limiting (1 request per second)
+      // Use longer delay to prevent too many requests
       const timeoutId = setTimeout(() => {
         reverseGeocode(userLocation[0], userLocation[1])
           .then((data) => {
@@ -264,65 +265,70 @@ const LocationMap = ({ latitude, longitude, showNearbyPlaces = false, isSOSMode 
             setLocationName(null)
             setIsLoadingLocationName(false)
           })
-      }, 1000) // 1 second delay for rate limiting
+      }, 2000) // 2 second delay for rate limiting and to reduce requests
       
       return () => clearTimeout(timeoutId)
     }
   }, [userLocation])
 
-  // Fetch nearby places when showNearbyPlaces is true or SOS mode is active
+  // Fetch nearby places when showNearbyPlaces is true or SOS mode is active (with debouncing)
   useEffect(() => {
     if ((showNearbyPlaces || isSOSMode) && userLocation && userLocation[0] && userLocation[1]) {
-      setIsLoadingPlaces(true)
-      setPlacesError(null)
+      // Debounce to prevent multiple rapid requests
+      const timeoutId = setTimeout(() => {
+        setIsLoadingPlaces(true)
+        setPlacesError(null)
+        
+        fetchNearbyPlaces(userLocation[0], userLocation[1], 3000)
+          .then((places) => {
+            // Process places and extract coordinates
+            const processedPlaces = places
+              .map((place) => {
+                let lat, lon
+                
+                if (place.type === 'node') {
+                  lat = place.lat
+                  lon = place.lon
+                } else if (place.center) {
+                  lat = place.center.lat
+                  lon = place.center.lon
+                } else {
+                  return null
+                }
+                
+                // Determine place type
+                const tags = place.tags || {}
+                let placeType = 'other'
+                let name = tags.name || tags['name:en'] || 'Unnamed Place'
+                
+                if (tags.amenity === 'hospital' || tags.amenity === 'clinic' || tags.amenity === 'doctors') {
+                  placeType = 'hospital'
+                } else if (tags.amenity === 'police') {
+                  placeType = 'police'
+                }
+                
+                return {
+                  id: place.id,
+                  name,
+                  type: placeType,
+                  latitude: lat,
+                  longitude: lon,
+                  tags
+                }
+              })
+              .filter(place => place !== null && (place.type === 'hospital' || place.type === 'police'))
+            
+            setNearbyPlaces(processedPlaces)
+            setIsLoadingPlaces(false)
+          })
+          .catch((error) => {
+            console.error('Error fetching nearby places:', error)
+            setPlacesError('Failed to load nearby places. Please try again.')
+            setIsLoadingPlaces(false)
+          })
+      }, 500) // Debounce delay
       
-      fetchNearbyPlaces(userLocation[0], userLocation[1], 3000)
-        .then((places) => {
-          // Process places and extract coordinates
-          const processedPlaces = places
-            .map((place) => {
-              let lat, lon
-              
-              if (place.type === 'node') {
-                lat = place.lat
-                lon = place.lon
-              } else if (place.center) {
-                lat = place.center.lat
-                lon = place.center.lon
-              } else {
-                return null
-              }
-              
-              // Determine place type
-              const tags = place.tags || {}
-              let placeType = 'other'
-              let name = tags.name || tags['name:en'] || 'Unnamed Place'
-              
-              if (tags.amenity === 'hospital' || tags.amenity === 'clinic' || tags.amenity === 'doctors') {
-                placeType = 'hospital'
-              } else if (tags.amenity === 'police') {
-                placeType = 'police'
-              }
-              
-              return {
-                id: place.id,
-                name,
-                type: placeType,
-                latitude: lat,
-                longitude: lon,
-                tags
-              }
-            })
-            .filter(place => place !== null && (place.type === 'hospital' || place.type === 'police'))
-          
-          setNearbyPlaces(processedPlaces)
-          setIsLoadingPlaces(false)
-        })
-        .catch((error) => {
-          console.error('Error fetching nearby places:', error)
-          setPlacesError('Failed to load nearby places. Please try again.')
-          setIsLoadingPlaces(false)
-        })
+      return () => clearTimeout(timeoutId)
     } else if (!showNearbyPlaces && !isSOSMode) {
       // Clear places when showNearbyPlaces is false and not in SOS mode
       setNearbyPlaces([])
